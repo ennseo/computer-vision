@@ -16,13 +16,19 @@ def get_device():
     print(f"Using device: {device}")
     return device
 
+
+def log_and_print(text, log_path="./result/result_log.txt"):
+    print(text)
+    with open(log_path, "a") as f:
+        f.write(text + "\n")
+
+
 def evaluate_and_visualize(
     model,
     loader,
     device,
     class_names,
     save_csv=False,
-    csv_path="./predictions.csv",
     cm_path="./confusion_matrix.png"
 ):
 
@@ -44,7 +50,8 @@ def evaluate_and_visualize(
 
     # accuracy
     acc = accuracy_score(all_labels, all_preds)
-    print(f"\n* Test Accuracy: {acc * 100:.2f}%\n")
+    log_and_print(f"\n=== Test Results ===")
+    log_and_print(f"* Test Accuracy: {acc * 100:.2f}%\n")
 
     # classification report
     report = classification_report(
@@ -54,16 +61,20 @@ def evaluate_and_visualize(
         output_dict=True
     )
 
-    print("* Classification Report:\n")
+    log_and_print("* Classification Report:\n")
+    header = f"{'Class':22s} {'precision':>10s} {'recall':>10s} {'f1-score':>10s} {'support':>10s}"
+    log_and_print(header)
 
-    print(f"{'Class':22s} {'precision':>10s} {'recall':>10s} {'f1-score':>10s} {'support':>10s}")
     for cls in class_names:
         cls_report = report[cls]
-        print(f"{cls:22s} "
-              f"{cls_report['precision']:10.2f} "
-              f"{cls_report['recall']:10.2f} "
-              f"{cls_report['f1-score']:10.2f} "
-              f"{int(cls_report['support']):10d}")
+        line = (
+            f"{cls:22s} "
+            f"{cls_report['precision']:10.2f} "
+            f"{cls_report['recall']:10.2f} "
+            f"{cls_report['f1-score']:10.2f} "
+            f"{int(cls_report['support']):10d}"
+        )
+        log_and_print(line)
 
     # confusion matrix
     cm = confusion_matrix(all_labels, all_preds)
@@ -77,12 +88,3 @@ def evaluate_and_visualize(
     plt.tight_layout()
     plt.savefig(cm_path)
     plt.show()
-
-
-    # csv 저장
-    if save_csv:
-        df = pd.DataFrame({
-            "true_label": all_labels,
-            "pred_label": all_preds,
-        })
-        df.to_csv(csv_path, index=False)

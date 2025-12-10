@@ -22,6 +22,8 @@ def main():
     test_transform = T.Compose([
         T.Resize((224, 224)),
         T.ToTensor(),
+        T.Normalize(mean=[0.485, 0.456, 0.406],
+                    std=[0.229, 0.224, 0.225]),
     ])
 
     test_dataset = POCDataset(
@@ -42,8 +44,7 @@ def main():
         loader=test_loader,
         device=device,
         class_names=class_names,
-        save_csv=True,                       
-        csv_path="./result/test_predictions.csv",
+        save_csv=True,                      
         cm_path="./result/confusion_matrix.png"
     )
 

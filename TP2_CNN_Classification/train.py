@@ -69,21 +69,29 @@ def main():
 
     data_dir = "./POC_Dataset"
     num_classes = 4
-    batch_size = 16
-    num_epochs = 20
+    batch_size = 16 
+    num_epochs = 30
     learning_rate = 1e-4
     weight_decay = 1e-4
 
     train_transform = T.Compose([
         T.Resize((224, 224)),
-        T.RandomHorizontalFlip(), # data augmentation
-        T.RandomRotation(10), # data augmentation
+        T.RandomHorizontalFlip(), # data augmentation -> 좌우 반전
+        T.RandomVerticalFlip(), # data augmentation -> 상하 반전
+        T.RandomRotation(10), # data augmentation -> 회전
+        T.RandomAffine(degrees=15, translate=(0.1, 0.1)), # data augmentation -> 이동
+        T.RandomResizedCrop(224, scale=(0.8, 1.0)), # data augmentation -> 랜덤 크롭, 224x224로 리사이즈
+        T.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.2), # data augmentation -> 밝기, 대비, 채도
         T.ToTensor(),
+        T.Normalize(mean=[0.485, 0.456, 0.406],
+                    std=[0.229, 0.224, 0.225]), 
     ])
 
     val_transform = T.Compose([
         T.Resize((224, 224)),
         T.ToTensor(),
+        T.Normalize(mean=[0.485, 0.456, 0.406], 
+                    std=[0.229, 0.224, 0.225]),
     ])
 
     # datasets (Training 폴더에 있는 데이터 -> train/val split)
@@ -108,15 +116,20 @@ def main():
     # model, loss, optimizer
     model = ResNet18(num_classes=num_classes).to(device)
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+    # optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+    optimizer = optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+    # optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
 
     best_val_acc = 0.0
     best_epoch = 0
-    patience = 5 #early stopping patience
+    patience = 5 # early stopping patience
     early_stop_counter = 0
 
     train_losses, val_losses = [], []
     train_accs, val_accs = [], []
+
+    with open("./result/result_log.txt", "w") as f: # 실행할 때마다 초기화
+        f.write("=== Training Log ===\n")
 
     # training loop
     for epoch in range(num_epochs):
@@ -132,14 +145,18 @@ def main():
         train_accs.append(train_acc)
         val_accs.append(val_acc)
 
-        print(f"[Epoch {epoch+1}/{num_epochs}] ({elapsed:.2f} sec)")
-        print(f" Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.2f}%")
-        print(f" Val   Loss: {val_loss:.4f} | Val   Acc: {val_acc:.2f}%")
-        print("-" * 50)
+        # 로그 (터미널, 파일 동일하게 기록)
+        log = (
+            f"[Epoch {epoch+1}/{num_epochs}] ({elapsed:.2f} sec)\n"
+            f" Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.2f}%\n"
+            f" Val   Loss: {val_loss:.4f} | Val   Acc: {val_acc:.2f}%\n"
+            + "-" * 50
+        )
 
-        # log 기록
-        with open("./result/training_log.txt", "a") as f:
-            f.write(f"{epoch+1},{train_loss:.4f},{train_acc:.2f},{val_loss:.4f},{val_acc:.2f},{elapsed:.2f}\n")
+        print(log)
+
+        with open("./result/result_log.txt", "a") as f:
+            f.write(log + "\n")
 
         # save best model
         if val_acc > best_val_acc:
