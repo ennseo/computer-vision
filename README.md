@@ -1,1 +1,1 @@
-# computer-vision
+# Introduction to Computer Vision
